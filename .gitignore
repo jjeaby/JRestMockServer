@@ -1,0 +1,6 @@
+node_modules
+**/*.logs
+full-stack
+package-lock.json
+*.yml
+
