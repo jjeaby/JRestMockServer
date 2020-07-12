@@ -22,7 +22,7 @@ const kafkaSendRestApi = {
 /*
 * KAFKA 관련 설정
 **/
-const okKafkaResponse = {
+const successResponse = {
     "code": "200",
     "message": "success"
 }
@@ -101,7 +101,7 @@ let mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) =>
 
             if (kafkaSendRestApi[restApi.toUpperCase().trim()]) {
                 sendKafka("topic", "messageKey", JSON.stringify(bodyJson));
-                res.end(JSON.stringify(okKafkaResponse));
+                res.end(JSON.stringify(successResponse));
             } else {
                 res.end(JSON.stringify(bodyJson));
             }
