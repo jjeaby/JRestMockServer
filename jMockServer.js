@@ -7,15 +7,13 @@ const dotenv = require( 'dotenv');
 
 
 dotenv.config();
-
-
 const kafkaHost = process.env.kafkaHost;
 const prismMockPort = process.env.prismMockPort;
-const kafkaMockPort = process.env.kafkaMockPort;
+const proxyMockPort = process.env.proxyMockPort;
 const prismMockSwaggerDoc = 'swagger-doc.json';
 
 const mockServerUrl = `http://127.0.0.1:${prismMockPort}`;
-const mockWithKafkaServerUrl = `http://127.0.0.1:${kafkaMockPort}`;
+const mockWithKafkaServerUrl = `http://127.0.0.1:${proxyMockPort}`;
 
 const kafkaSendRestApi = {
     "GET /PETS?LIMIT=286": {
@@ -24,9 +22,9 @@ const kafkaSendRestApi = {
     }
 };
 
-const successResponse = {
+const successKafkaResponse = {
     "code": "200",
-    "message": "success"
+    "message": "Kafka Produce Success"
 }
 
 
@@ -73,7 +71,7 @@ let prismMockServer = () => {
 * */
 let mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) => {
     let prismMockPort = parseInt(mockServerUrl.split(":")[2]);
-    let kafkaMockPort = parseInt(mockWithKafkaServerUrl.split(":")[2]);
+    let proxyMockPort = parseInt(mockWithKafkaServerUrl.split(":")[2]);
 
     let option = {
         target: mockServerUrl,
@@ -106,7 +104,7 @@ let mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) =>
 
             if (kafkaSendRestApi[restApi.toUpperCase().trim()]) {
                 sendKafka("topic", "messageKey", JSON.stringify(bodyJson));
-                res.end(JSON.stringify(successResponse));
+                res.end(JSON.stringify(successKafkaResponse));
             } else {
                 res.end(JSON.stringify(bodyJson));
             }
@@ -121,8 +119,8 @@ let mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) =>
     mockServer.use(function (req, res) {
         proxyServer.web(req, res, option)
     });
-    console.log('listening', '\x1b[31m', `${mockServerName}`, '\x1b[0m', '\x1b[36m', 'With Kafka on port,', '\x1b[31m', `${kafkaMockPort}`, '\x1b[0m', ', only Mock on port', '\x1b[31m', `${prismMockPort}`, '\x1b[0m');
-    mockServer.listen(kafkaMockPort);
+    console.log('listening', '\x1b[31m', `${mockServerName}`, '\x1b[0m', '\x1b[36m', 'With Kafka on port,', '\x1b[31m', `${proxyMockPort}`, '\x1b[0m', ', only Mock on port', '\x1b[31m', `${prismMockPort}`, '\x1b[0m');
+    mockServer.listen(proxyMockPort);
 }
 
 
