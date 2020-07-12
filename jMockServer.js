@@ -12,7 +12,12 @@ const prismMockSwaggerDoc = 'swagger-doc.json';
 const mockServerUrl = `http://127.0.0.1:${prismMockPort}`;
 const mockWithKafkaServerUrl = `http://127.0.0.1:${kafkaMockPort}`;
 
-const kafkaSendRestApi = ["GET /PETS?LIMIT=286"];
+const kafkaSendRestApi = {
+    "GET /PETS?LIMIT=286": {
+        "code": "200",
+        "message": "success"
+    }
+};
 
 /*
 * KAFKA 관련 설정
@@ -24,55 +29,44 @@ const okKafkaResponse = {
 
 
 const sendKafka = (topicName, messageKey, message) => {
-    const client = new kafka.KafkaClient({kafkaHost});
+    const client = new kafka.KafkaClient({kafkaHost, requestTimeout: 1, connectTimeout: 1});
     const producer = new kafka.Producer(client);
     const payloads = [
         {topic: topicName, key: messageKey, messages: message},
     ];
-
     producer.send(payloads, function (err, data) {
-        // console.log(data);
-        // console.log(err);
+        if (data === undefined) {
+            prismMockServer.kill('SIGHUP');
+        }
     });
 }
 
 /*
 * Prism 으로 기본 Mock 서버 구동 하기
 * */
-const prismMockServer = () => {
-    let prismMockServer;
-    try {
-        prismMockServer = spawn('prism', ['mock', '--host', '0.0.0.0', '-p', prismMockPort, '-d', prismMockSwaggerDoc]);
+let prismMockServer = () => {
+    prismMockServer = spawn('prism', ['mock', '--host', '0.0.0.0', '-p', prismMockPort, '-d', prismMockSwaggerDoc]);
 
-        prismMockServer.stdout.on('data', (data) => {
-            data = data.toString().replace(/\r?\n|\r/g, " ");
-            console.log(`stdout: ${data}`);
-        });
-        prismMockServer.stderr.on('data', (data) => {
-            data = data.toString().replace(/\r?\n|\r/g, " ");
-            console.log(`stderr: ${data}`);
-        });
-        prismMockServer.on('close', (code) => {
-            code = code.toString().replace(/\r?\n|\r/g, " ");
-            console.log(`child process exited with code ${code}`);
-        });
-
-    } catch (err) {
-        console.log(err.toString());
-        prismMockServer.exit(1);
-        process.exit(1);
-    }
-
+    prismMockServer.stdout.on('data', (data) => {
+        data = data.toString().replace(/\r?\n|\r/g, " ");
+        console.log(`stdout: ${data}`);
+    });
+    prismMockServer.stderr.on('data', (data) => {
+        data = data.toString().replace(/\r?\n|\r/g, " ");
+        console.log(`stderr: ${data}`);
+    });
+    prismMockServer.on('close', (code) => {
+        throw {name: 'kafkaException', message: 'kafka 서버 연결 오류가 발생하였습니다.'}
+        process.exit(3);
+    });
     return prismMockServer
-
-
 }
 
 
 /*
 * MOCK Proxy Server 구성
 * */
-const mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) => {
+let mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) => {
     let prismMockPort = parseInt(mockServerUrl.split(":")[2]);
     let kafkaMockPort = parseInt(mockWithKafkaServerUrl.split(":")[2]);
 
@@ -105,12 +99,8 @@ const mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) 
             bodyJson.status = "success";
             bodyJson.result = JSON.parse(body);
 
-            if (kafkaSendRestApi.indexOf(restApi.toUpperCase().trim()) >= 0) {
-                try
-                { sendKafka("topic", "messageKey", JSON.stringify(bodyJson));}
-                catch (e) {
-                    pMockServer.exit(1);
-                }
+            if (kafkaSendRestApi[restApi.toUpperCase().trim()]) {
+                sendKafka("topic", "messageKey", JSON.stringify(bodyJson));
                 res.end(JSON.stringify(okKafkaResponse));
             } else {
                 res.end(JSON.stringify(bodyJson));
@@ -135,7 +125,7 @@ const mockProxyServer = (mockServerName, mockServerUrl, mockWithKafkaServerUrl) 
  * Mock Server 구동
  */
 try {
-    pMockServer = prismMockServer();
+    prismMockServer();
     console.log('------------------------------------------------------------------------------------------------------');
     console.log("PRISM Mock Server Start!");
     console.log('------------------------------------------------------------------------------------------------------');
@@ -147,6 +137,5 @@ try {
 
     }, 2000);
 } catch (err) {
-    console.log(err.toString());
-    process.exit(1);
+    console.log("err", err.toString());
 }
