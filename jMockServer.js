@@ -3,10 +3,15 @@ const {spawn} = require('child_process');
 const kafka = require('kafka-node');
 const express = require('express');
 const bodyParser = require('body-parser');
+const dotenv = require( 'dotenv');
 
-const kafkaHost = '127.0.0.1:9092';
-const prismMockPort = 15001;
-const kafkaMockPort = 25001;
+
+dotenv.config();
+
+
+const kafkaHost = process.env.kafkaHost;
+const prismMockPort = process.env.prismMockPort;
+const kafkaMockPort = process.env.kafkaMockPort;
 const prismMockSwaggerDoc = 'swagger-doc.json';
 
 const mockServerUrl = `http://127.0.0.1:${prismMockPort}`;
@@ -19,17 +24,17 @@ const kafkaSendRestApi = {
     }
 };
 
-/*
-* KAFKA 관련 설정
-**/
 const successResponse = {
     "code": "200",
     "message": "success"
 }
 
 
+/*
+* KAFKA 관련 설정
+**/
 const sendKafka = (topicName, messageKey, message) => {
-    const client = new kafka.KafkaClient({kafkaHost, requestTimeout: 1, connectTimeout: 1});
+    const client = new kafka.KafkaClient({kafkaHost});
     const producer = new kafka.Producer(client);
     const payloads = [
         {topic: topicName, key: messageKey, messages: message},
